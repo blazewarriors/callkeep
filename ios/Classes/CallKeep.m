@@ -239,7 +239,7 @@ static CXProvider* sharedProvider;
     }
     */
 
-    NSDictionary *dic = payload.dictionaryPayload[@"data"][@"map"][@"data"][@"map"];
+//    NSDictionary *dic = payload.dictionaryPayload[@"data"][@"map"][@"data"][@"map"];
 //
 //    if (dic[@"aps"] != nil) {
 //        NSLog(@"Do not use the 'alert' format for push type %@.", payload.type);
@@ -260,34 +260,105 @@ static CXProvider* sharedProvider;
 //        uuid = [self createUUID];
 //    }
     
-    // Sua theo data của Stringee
-    NSString *callId = dic[@"callId"] != nil ? dic[@"callId"] : @"";
-    int serial = dic[@"serial"] != nil ? [(NSNumber *)dic[@"serial"] intValue] : 0;
-    NSString *callStatus = dic[@"callStatus"] != nil ? dic[@"callStatus"] : @"";
-    NSString *fromAlias = dic[@"from"][@"map"][@"alias"] != nil ? dic[@"from"][@"map"][@"alias"] : @"";
-    NSString *fromNumber = dic[@"from"][@"map"][@"number"] != nil ? dic[@"from"][@"map"][@"number"] : @"";
-    NSString *callerName = ![fromAlias isEqual:@""] ? fromAlias : (![fromNumber isEqual:@""] ? fromNumber : @"Connecting...");
-    NSString *uuid = [self createUUID];
-    
-    NSMutableDictionary *parseData = [NSMutableDictionary new];
-    [parseData setValue:callId forKey:@"callId"];
-    [parseData setValue:@(serial) forKey:@"serial"];
-    [parseData setValue:callStatus forKey:@"callStatus"];
-    [parseData setValue:uuid forKey:@"uuid"];
+    // Data - Call
+    // dic = {
+    //     callId = "call-vn-1-NITISO6WM9-1664922588402";
+    //     callStatus = started;
+    //     from =     {
+    //         map =         {
+    //             alias = "Tr\U01b0\U01a1ng V\U0103n Thi\U1ec7n";
+    //             "is_online" = 1;
+    //             number = user87c51941d2224ec88685709ac549ff48;
+    //             type = internal;
+    //         };
+    //     };
+    //     projectId = 13735;
+    //     serial = 1;
+    //     to =     {
+    //         map =         {
+    //             alias = "Tr\U01b0\U01a1ng V\U0103n Thi\U1ec7n";
+    //             "is_online" = 1;
+    //             number = userb16b8695aa2e46db9bddf4ae04822697;
+    //             type = internal;
+    //         };
+    //     };
+    // }
 
-    //NSDictionary *extra = payload.dictionaryPayload[@"extra"];
+    // Data - Message
+    // dic = {
+    //     avatarUrl = "";
+    //     channelType = 0;
+    //     convId = "conv-vn-1-M4S3S666NO-1663002963182";
+    //     convName = "{\"userb16b8695aa2e46db9bddf4ae04822697\":\"Tr\U01b0\U01a1ng V\U0103n Thi\U1ec7n\",\"87c51941-d222-4ec8-8685-709ac549ff48\":\"Tr\U01b0\U01a1ng V\U0103n Thi\U1ec7n\"}";
+    //     createdTime = 1665406603002;
+    //     displayName = "";
+    //     from = user87c51941d2224ec88685709ac549ff48;
+    //     isGroup = 0;
+    //     message =     {
+    //         map =         {
+    //             content = hello;
+    //             messageType = 1;
+    //             text = hello;
+    //         };
+    //     };
+    //     msgId = "msg-vn-1-NITISO6WM9-1664924252749";
+    //     seq = 152;
+    //     type = 1;
+    // }
 
-    [CallKeep reportNewIncomingCall:uuid
-                             handle:fromNumber
-                         handleType:@"generic"
-                           hasVideo:false
-                localizedCallerName:callerName
-                        fromPushKit:YES
-                            payload:parseData
-              withCompletionHandler:completion];
+    @try {
+        NSDictionary *dic = payload.dictionaryPayload[@"data"][@"map"][@"data"][@"map"];
+        //NSLog(@"didReceiveIncomingPushWithPayload dic = %@", dic);
+        
+        // Sua theo data của Stringee
+        NSString *callId = dic[@"callId"] != nil ? dic[@"callId"] : @"";
+        //NSLog(@"didReceiveIncomingPushWithPayload callId = %@", callId);
+        int serial = dic[@"serial"] != nil ? [(NSNumber *)dic[@"serial"] intValue] : 0;
+        //NSLog(@"didReceiveIncomingPushWithPayload serial = %@", serial);
+        NSString *callStatus = dic[@"callStatus"] != nil ? dic[@"callStatus"] : @"";
+        //NSLog(@"didReceiveIncomingPushWithPayload callStatus = %@", callStatus);
 
-    // Ban them su kien khi nhan duoc push
-    [self sendEventWithNameWrapper:CallKeepPushKitReceivedNotification body:parseData];
+        NSString *fromAlias = @"";
+        NSString *fromNumber = @"";
+        if ([dic[@"from"] isKindOfClass:[NSDictionary class]])
+        {
+            fromAlias = dic[@"from"][@"map"] == nil ? @"" : dic[@"from"][@"map"][@"alias"] != nil ? dic[@"from"][@"map"][@"alias"] : @"";
+            fromNumber = dic[@"from"][@"map"] == nil ? @"" : dic[@"from"][@"map"][@"number"] != nil ? dic[@"from"][@"map"][@"number"] : @"";
+        }
+        //NSLog(@"didReceiveIncomingPushWithPayload fromAlias = %@", fromAlias);
+        //NSLog(@"didReceiveIncomingPushWithPayload fromNumber = %@", fromNumber);
+
+        NSString *callerName = ![fromAlias isEqual:@""] ? fromAlias : (![fromNumber isEqual:@""] ? fromNumber : @"Connecting...");
+        //NSLog(@"didReceiveIncomingPushWithPayload callerName = %@", callerName);
+        NSString *uuid = [self createUUID];
+        //NSLog(@"didReceiveIncomingPushWithPayload uuid = %@", uuid);
+
+        if (![callId isEqual:@""]) {
+            //NSLog(@"didReceiveIncomingPushWithPayload: callback CallKeepPushKitReceivedNotification");
+            NSMutableDictionary *parseData = [NSMutableDictionary new];
+            [parseData setValue:callId forKey:@"callId"];
+            [parseData setValue:@(serial) forKey:@"serial"];
+            [parseData setValue:callStatus forKey:@"callStatus"];
+            [parseData setValue:uuid forKey:@"uuid"];
+
+            //NSDictionary *extra = payload.dictionaryPayload[@"extra"];
+
+            [CallKeep reportNewIncomingCall:uuid
+                                    handle:fromNumber
+                                handleType:@"generic"
+                                hasVideo:false
+                        localizedCallerName:callerName
+                                fromPushKit:YES
+                                    payload:parseData
+                    withCompletionHandler:completion];
+
+            // Ban them su kien khi nhan duoc push
+            [self sendEventWithNameWrapper:CallKeepPushKitReceivedNotification body:parseData];
+        }
+     }
+     @catch (NSException *exception) {
+        NSLog(@"Exception: %@", exception);
+     }
 }
 
 - (void)pushRegistry:(PKPushRegistry *)registry didReceiveIncomingPushWithPayload:(PKPushPayload *)payload forType:(NSString *)type {
